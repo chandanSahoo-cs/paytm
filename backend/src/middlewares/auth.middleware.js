@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken"
-import ApiError from "../utils/ApiError";
-import User from "../models/User.model";
+import ApiError from "../utils/ApiError.js";
+import User from "../models/User.model.js";
 
 const verifyJwt = async(req,_,next)=>{
     try {
@@ -9,7 +9,7 @@ const verifyJwt = async(req,_,next)=>{
             throw new ApiError(400,"Incorrect access token")
         }
         const decodedToken = jwt.verify(accessToken,process.env.ACCESS_TOKEN_SECRET)
-        const user = User.findById(decodedToken._id).select("-password -refreshToken")
+        const user = await User.findById(decodedToken._id).select("-password -refreshToken")
         if(!user){
             throw new ApiError(400,"Incorrect access token")
         }

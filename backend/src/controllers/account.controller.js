@@ -1,18 +1,23 @@
 import mongoose from "mongoose";
 import Account from "../models/account.model.js";
-import ApiError from "../utils/ApiError";
-import ApiResponse from "../utils/ApiResponse";
-import asyncHandler from "../utils/AsyncHandler";
+import ApiError from "../utils/ApiError.js";
+import ApiResponse from "../utils/ApiResponse.js";
+import asyncHandler from "../utils/AsyncHandler.js";
+import User from "../models/User.model.js";
 
 //TODO : Get user details from the req
 //TODO : return account details
 const accountDetails = asyncHandler(async (req, res) => {
   const user = req.user;
-
+  console.log(user);
   if (!user) {
     throw new ApiError(400, "No user found. Please login again");
   }
-  const wallet = await Account.findOne(user._id);
+  const wallet = await Account.findOne({user: user._id});
+  console.log(wallet);
+  if (!wallet) {
+    throw new ApiError(400, "No wallet found. Please create a wallet");
+  }
   res.status(200).json(new ApiResponse(200, wallet, "User account details"));
 });
 
@@ -28,20 +33,20 @@ const transfer = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   const { amount, to } = req.body;
-  const from = req.user.phoneNumber;
+  const from = req.user._id;
 
   if (!from) {
     throw new ApiError(400, "Failed to fetch user. Please login again");
   }
 
-  if ([amount, to].some((val) => val?.trim() === "")) {
+  if ([amount, to].some((val) => val?.trim === "")) {
     throw new ApiError(
       400,
       "Failed to make the transaction. Enter the details carefully"
     );
   }
 
-  const walletFrom = await Account.findOne({ phoneNumber: from }).session(
+  const walletFrom = await Account.findOne({ user: from }).session(
     session
   );
 
@@ -54,7 +59,7 @@ const transfer = asyncHandler(async (req, res) => {
   }
 
   const userWallet = await Account.findOneAndUpdate(
-    { phoneNumber: from },
+    { user: from },
     {
       $inc: {
         walletBalance: -amount,
@@ -65,8 +70,11 @@ const transfer = asyncHandler(async (req, res) => {
     }
   ).session(session);
 
+  console.log(userWallet);
+
+  const reciepent  = await User.findOne({phoneNumber: to}).session(session);
   const reciepentWallet = await Account.findOneAndUpdate(
-    { phoneNumber: to },
+    { user: reciepent._id },
     {
       $inc: {
         walletBalance: amount,
@@ -77,14 +85,16 @@ const transfer = asyncHandler(async (req, res) => {
     }
   ).session(session);
 
+  console.log(reciepentWallet);
   if (!reciepentWallet) {
     await session.abortTransaction();
     throw new ApiError(411, "Reciepent wallet not found");
   }
 
+
   await session.commitTransaction();
 
-  res.status(200).json(new ApiResponse(200, {}, "hehe"));
+  res.status(200).json(new ApiResponse(200, {}, "Transaction successful"));
 });
 
 export { accountDetails, transfer };

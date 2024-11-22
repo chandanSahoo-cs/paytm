@@ -33,7 +33,7 @@ const options = {
 //TODO : Check if wallet created
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, phoneNumber, password } = req.body;
-  if ([name, email, phoneNumber, password].some((val) => val?.trim() === "")) {
+  if ([name, email, phoneNumber, password].some((val) => val?.trim=== "")) {
     throw new ApiError(400, "All fields are necessary");
   }
 
@@ -45,7 +45,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Email or phone number already exits");
   }
   const newUser = await User.create({
-    name: name.toLowerCase(),
+    name: name,
     email,
     phoneNumber,
     password,
@@ -108,8 +108,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Password is incorrect");
   }
 
-  const { accessToken, refreshToken } = generateAccessAndRefreshToken(user._id);
-
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
   const loggedinUser = user.toObject();
   delete loggedinUser.password;
   delete loggedinUser.refreshToken;
@@ -125,11 +124,12 @@ const loginUser = asyncHandler(async (req, res) => {
 //TODO : clear cookies
 const logoutUser = asyncHandler(async (req, res) => {
   const _id = req.user._id;
+  // console.log(_id);
   const updatedUser = await User.findByIdAndUpdate(
     _id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: "", // Removes the field entirely
       },
     },
     {
